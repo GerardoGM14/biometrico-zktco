@@ -1,0 +1,16 @@
+{
+  "name": "zkfinger-bridge",
+  "version": "1.0.0",
+  "description": "Bridge WebSocket para ZKTeco Live20R - Conecta el SDK nativo con el frontend web",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "ffi-napi": "^4.0.3",
+    "ref-napi": "^3.0.3",
+    "ref-array-di": "^1.2.2"
+  }
+}
