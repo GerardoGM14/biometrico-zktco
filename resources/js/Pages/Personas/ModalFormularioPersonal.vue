@@ -157,12 +157,9 @@ const props = defineProps({
   roles: { type: Array, default: () => [] }
 })
 
-// Errores de validación
 const errors = reactive({})
 
 const roles = ref([]);
-
-// Formulario reactivo
 const form = reactive({
   id: null, 
   nombre: '',
@@ -188,7 +185,6 @@ const getRoles = async () => {
     }
 };
 
-// Watcher para props.persona
 watch(() => props.persona, (persona) => {
   if (persona) {
     Object.assign(form, {
@@ -207,7 +203,7 @@ watch(() => props.persona, (persona) => {
     })
     // No cargamos password para edición
   } else {
-    // Limpiar formulario
+
     Object.assign(form, {
       id: null,
       nombre: '',
@@ -228,7 +224,6 @@ watch(() => props.persona, (persona) => {
   }
 }, { immediate: true })
 
-// Validación
 function validarFormulario() {
   let valido = true
 

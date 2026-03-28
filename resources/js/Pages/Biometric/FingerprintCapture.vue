@@ -1,6 +1,5 @@
 <template>
   <div class="border rounded-lg p-4 bg-gray-50">
-    <!-- Estado del lector -->
     <div class="flex items-center gap-2 mb-4">
       <span
         class="w-3 h-3 rounded-full"
@@ -20,7 +19,6 @@
       <span v-if="modoBridge" class="text-xs text-gray-400 ml-2">({{ modoBridge }})</span>
     </div>
 
-    <!-- Selector de dedo (solo en modo registro) -->
     <div v-if="modo === 'registro'" class="mb-4">
       <label class="block text-sm font-medium text-gray-700 mb-1">Seleccionar dedo:</label>
       <select v-model="dedoSeleccionado" class="w-full border rounded px-3 py-2">
@@ -30,7 +28,6 @@
       </select>
     </div>
 
-    <!-- Area visual de la huella -->
     <div
       class="w-40 h-48 mx-auto border-2 border-dashed rounded-lg flex items-center justify-center mb-4 transition-all duration-300"
       :class="{
@@ -53,7 +50,7 @@
       </div>
     </div>
 
-    <!-- Calidad de captura -->
+
     <div v-if="calidad > 0" class="mb-4">
       <div class="flex justify-between text-sm mb-1">
         <span>Calidad:</span>
@@ -76,7 +73,6 @@
       </div>
     </div>
 
-    <!-- Botones -->
     <div class="flex gap-2">
       <button
         @click="iniciarCaptura"
@@ -94,7 +90,7 @@
       </button>
     </div>
 
-    <!-- Mensaje de error -->
+
     <p v-if="error" class="text-red-600 text-sm mt-2">{{ error }}</p>
   </div>
 </template>
@@ -114,17 +110,17 @@ const emit = defineEmits(['captura', 'error'])
 // Bridge WebSocket config
 const BRIDGE_URL = 'ws://127.0.0.1:8081'
 
-// Estado
+
 const estadoLector = ref('desconectado')
 const capturaExitosa = ref(false)
 const calidad = ref(0)
 const error = ref('')
-const dedoSeleccionado = ref(2) // Indice derecho por defecto
+const dedoSeleccionado = ref(2) 
 const modoBridge = ref('') // 'sdk' o 'simulacion'
 
-// WebSocket
+
 let ws = null
-let resolveCaptura = null // Para manejar la promesa de captura
+let resolveCaptura = null 
 
 const dedos = {
   1: 'Pulgar Derecho',
@@ -144,13 +140,10 @@ const mensajeEstado = computed(() => {
   }
 })
 
-/**
- * Conectar al Bridge WebSocket
- */
+
 function conectarBridge() {
   error.value = ''
 
-  // Cerrar conexion anterior si existe
   if (ws) {
     ws.close()
     ws = null
@@ -161,7 +154,6 @@ function conectarBridge() {
 
     ws.onopen = () => {
       console.log('[Fingerprint] Conectado al Bridge')
-      // Pedir status del lector
       ws.send(JSON.stringify({ action: 'status' }))
     }
 
@@ -192,9 +184,6 @@ function conectarBridge() {
   }
 }
 
-/**
- * Manejar respuestas del Bridge
- */
 function manejarRespuesta(data) {
   switch (data.action) {
     case 'status':
@@ -205,7 +194,6 @@ function manejarRespuesta(data) {
       } else {
         estadoLector.value = 'desconectado'
         if (data.mode === 'simulacion') {
-          // En modo simulacion, permitir captura de todas formas
           estadoLector.value = 'conectado'
         } else {
           error.value = data.message || 'Lector no detectado'
@@ -234,7 +222,6 @@ function manejarRespuesta(data) {
         emit('error', error.value)
       }
 
-      // Resolver la promesa de captura si existe
       if (resolveCaptura) {
         resolveCaptura(data)
         resolveCaptura = null
@@ -242,7 +229,6 @@ function manejarRespuesta(data) {
       break
 
     case 'match':
-      // Respuesta de comparacion - se maneja desde el controller
       if (resolveCaptura) {
         resolveCaptura(data)
         resolveCaptura = null
@@ -257,9 +243,6 @@ function manejarRespuesta(data) {
   }
 }
 
-/**
- * Iniciar captura de huella
- */
 function iniciarCaptura() {
   if (!ws || ws.readyState !== WebSocket.OPEN) {
     error.value = 'No hay conexion con el Bridge. Presione Reintentar.'
@@ -273,7 +256,6 @@ function iniciarCaptura() {
 
   ws.send(JSON.stringify({ action: 'capture' }))
 
-  // Timeout de seguridad: si no hay respuesta en 15 seg, resetear estado
   setTimeout(() => {
     if (estadoLector.value === 'capturando') {
       estadoLector.value = 'conectado'
@@ -283,12 +265,10 @@ function iniciarCaptura() {
   }, 15000)
 }
 
-// Verificar conexion periodicamente
 let intervaloVerificacion = null
 
 onMounted(() => {
   conectarBridge()
-  // Verificar cada 10 segundos
   intervaloVerificacion = setInterval(() => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       conectarBridge()

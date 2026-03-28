@@ -147,7 +147,6 @@ async function buscar() {
     items.value = response.data.data || []
     serverItemsLength.value = response.data.total || 0
 
-    // Calcular resumen de los datos visibles
     const todos = response.data.data || []
     resumen.value = {
       puntuales: todos.filter(a => a.estado === 'puntual').length,

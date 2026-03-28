@@ -4,19 +4,6 @@ use Illuminate\Support\Facades\Route;
 use Modules\Biometric\Controllers\BiometricController;
 use Modules\Biometric\Controllers\AsistenciaController;
 
-/*
-|--------------------------------------------------------------------------
-| Rutas del Módulo Biométrico
-|--------------------------------------------------------------------------
-| Agregar en routes/web.php:
-|
-| use Modules\Biometric\Controllers\BiometricController;
-| use Modules\Biometric\Controllers\AsistenciaController;
-|
-| Y luego copiar las rutas de abajo dentro del grupo de rutas autenticadas.
-|
-*/
-
 // RUTAS DE BIOMETRÍA (Registro de huellas)
 Route::get('/biometric', [BiometricController::class, 'index'])->name('biometric');
 Route::get('/biometric/huellas/{personaId}', [BiometricController::class, 'getHuellas'])->name('biometric.huellas');

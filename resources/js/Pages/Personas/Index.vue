@@ -173,23 +173,19 @@ const props = defineProps({
   roles: Array
 })
 
-// Reactividad
 const mostrarModal = ref(false)
 const searchValue = ref('')
 const personaSeleccionada = ref(null)
 
-//Para modales de las otras tablas
 const mostrarModalSecundario = ref(false)
 const itemSecundarioSeleccionado = ref(null)
 const itemsSecundarios = ref([])
 const headersSecundarios = ref([])
 
-// Campos a buscar
 const searchFields = ['nombre', 'apellido', 'numero_documento', 'email', 'numero_celular']
 const serverItemsLength = ref(0)
 const loading = ref(false)
 
-// Headers de la tabla
 const headers = [
   { text: 'Nombre', value: 'nombre' },
   { text: 'Apellidos', value: 'apellido' },
@@ -201,12 +197,9 @@ const headers = [
   { text: 'Acciones', value: 'actions', sortable: false },
 ]
 
-// Configuración para tablas secundarias
 const tablaActiva = ref(null)
 const personaIdActiva = ref(null)
 const tituloTablaActiva = ref('')
-
-// Configuración de headers por tipo
 const headersConfig = {
   dependientes: [
     { text: 'Nombre', value: 'nombre' },
@@ -231,10 +224,9 @@ const serverOptions = ref({
   rowsPerPage: 10,
 })
   
-// Convertimos las personas en una ref reactiva
 const items = ref([])
 
-// Función para alternar entre tablas secundarias
+
 const toggleTabla = async (tipo, personaId) => {
   if (tablaActiva.value === tipo && personaIdActiva.value === personaId) {
     tablaActiva.value = null
@@ -257,7 +249,6 @@ const toggleTabla = async (tipo, personaId) => {
     const response = await axios.get(`/${endpoint}/${personaId}`)
     itemsSecundarios.value = response.data
 
-    // Formatear fechas si es la tabla de dependientes
     itemsSecundarios.value = tipo === 'dependientes' 
       ? response.data.map(dep => ({
           ...dep,
@@ -270,7 +261,6 @@ const toggleTabla = async (tipo, personaId) => {
   }
 }
 
-// Función que carga datos desde el servidor
 const fetchPersonas = async () => {
   loading.value = true
   try {
@@ -291,31 +281,24 @@ const fetchPersonas = async () => {
   }
 }
 
-// Carga inicial
 fetchPersonas()
 
-// Reaccionar a cambios en la paginación o búsqueda
 watch([serverOptions, searchValue], fetchPersonas, { deep: true })
 
-// Función para abrir modal en modo creación
 const abrirModalNuevo = () => {
   personaSeleccionada.value = null
   mostrarModal.value = true
 }
 
-// Función para abrir modal en modo edición
 const abrirModalEditar = (persona) => {
   personaSeleccionada.value = { ...persona }
   mostrarModal.value = true
 }
-
-// Función para cerrar modal
 const cerrarModal = () => {
   mostrarModal.value = false
   personaSeleccionada.value = null
 }
 
-// Manejar guardado desde el modal
 const manejarGuardado = ({ accion, data }) => {
   if (accion === 'creado') {
     items.value.push(data)
@@ -328,7 +311,6 @@ const manejarGuardado = ({ accion, data }) => {
   cerrarModal()
 }
 
-// Función para eliminar
 const deleteItem = (item) => {
   Swal.fire({
     title: '¿Estás seguro?',
@@ -354,16 +336,13 @@ const deleteItem = (item) => {
   })
 }
 
-// Función para abrir modal secundario
 const abrirModalSecundario = (item = null) => {
   itemSecundarioSeleccionado.value = item
   mostrarModalSecundario.value = true
 }
 
-// Función para manejar guardado secundario
 const manejarGuardadoSecundario = async ({ accion, data, personaId }) => {
   try {
-    // Actualización optimista (sin esperar respuesta del servidor)
     if (accion === 'creado') {
       itemsSecundarios.value.push(data);
     } else if (accion === 'actualizado') {
@@ -373,10 +352,8 @@ const manejarGuardadoSecundario = async ({ accion, data, personaId }) => {
       }
     }
     
-    // Forzar actualización reactiva
     itemsSecundarios.value = [...itemsSecundarios.value];
     
-    // Opcional: Recargar datos desde el servidor para asegurar consistencia
     const endpoint = tablaActiva.value === 'dependientes' ? 'dependientes'
       : tablaActiva.value === 'datosBancarios' ? 'datos-bancarios'
       : 'tallas-epp';
@@ -390,7 +367,6 @@ const manejarGuardadoSecundario = async ({ accion, data, personaId }) => {
   }
 };
 
-// Función para eliminar item secundario
 const eliminarItemSecundario = (item) => {
   Swal.fire({
     title: '¿Estás seguro?',

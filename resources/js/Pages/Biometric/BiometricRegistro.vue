@@ -4,11 +4,9 @@
     <p class="text-gray-600 mb-6">Seleccione un empleado y registre hasta 3 huellas dactilares.</p>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <!-- Panel izquierdo: Seleccionar persona -->
       <div class="bg-white rounded-lg shadow p-6">
         <h3 class="text-lg font-semibold mb-4">1. Seleccionar Empleado</h3>
 
-        <!-- Buscador -->
         <div class="mb-4">
           <input
             type="text"
@@ -19,7 +17,6 @@
           />
         </div>
 
-        <!-- Lista de resultados -->
         <div v-if="personasResultado.length" class="max-h-60 overflow-y-auto border rounded">
           <div
             v-for="persona in personasResultado"
@@ -35,7 +32,6 @@
           </div>
         </div>
 
-        <!-- Persona seleccionada -->
         <div v-if="personaSeleccionada" class="mt-4 p-4 bg-blue-50 rounded-lg">
           <p class="font-semibold text-blue-800">
             {{ personaSeleccionada.nombre }} {{ personaSeleccionada.apellido }}
@@ -43,7 +39,6 @@
           <p class="text-sm text-blue-600">Doc: {{ personaSeleccionada.numero_documento }}</p>
         </div>
 
-        <!-- Huellas registradas -->
         <div v-if="personaSeleccionada" class="mt-4">
           <h4 class="font-medium text-gray-700 mb-2">
             Huellas registradas ({{ huellasRegistradas.length }}/3):
@@ -72,7 +67,6 @@
         </div>
       </div>
 
-      <!-- Panel derecho: Captura de huella -->
       <div class="bg-white rounded-lg shadow p-6">
         <h3 class="text-lg font-semibold mb-4">2. Capturar Huella</h3>
 
@@ -92,7 +86,6 @@
           @error="onError"
         />
 
-        <!-- Mensaje de resultado -->
         <div v-if="mensajeResultado" class="mt-4 p-3 rounded" :class="mensajeClase">
           {{ mensajeResultado }}
         </div>
