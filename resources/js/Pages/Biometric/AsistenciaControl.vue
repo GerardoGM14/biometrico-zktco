@@ -104,19 +104,16 @@ const ultimasMarcaciones = ref([])
 
 let relojInterval = null
 
-// Reloj en tiempo real
 function actualizarReloj() {
   const now = new Date()
   horaActual.value = now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   fechaActual.value = now.toLocaleDateString('es-PE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-// Cuando se captura una huella, primero identificar, luego marcar
 async function onHuellaCapturada({ template }) {
   resultado.value = null
 
   try {
-    // Paso 1: Identificar la huella
     const identResponse = await axios.post('/biometric/identificar', { template })
 
     if (!identResponse.data.identificado) {
@@ -129,7 +126,6 @@ async function onHuellaCapturada({ template }) {
 
     const persona = identResponse.data.persona
 
-    // Paso 2: Marcar asistencia
     const marcResponse = await axios.post('/asistencia/marcar', {
       persona_id: persona.id,
     })
@@ -142,10 +138,8 @@ async function onHuellaCapturada({ template }) {
       estado: marcResponse.data.estado,
     }
 
-    // Recargar últimas marcaciones
     await cargarMarcacionesHoy()
 
-    // Limpiar resultado después de 5 segundos
     setTimeout(() => {
       resultado.value = null
     }, 5000)

@@ -6,6 +6,7 @@
  * via WebSocket para que el frontend Vue pueda usarlas.
  *
  * Puerto: 8081 (WebSocket)
+ * Puerto: 8082 (HTTP - para el backend PHP)
  *
  * Mensajes que acepta (JSON):
  *   { action: "status" }          -> Verifica si el lector esta conectado
@@ -23,33 +24,36 @@
  *   2. Copiar libzkfp.dll y libzkfpErr.dll a esta carpeta (o a C:\Windows\System32)
  *   3. npm install
  *   4. npm start
+ *
+ * NOTA TECNICA:
+ *   Este bridge usa "koffi" en lugar de "ffi-napi". koffi es un FFI moderno
+ *   y mantenido que viene precompilado para Node 18-24, no requiere Python,
+ *   node-gyp ni Visual Studio Build Tools. Compatible con Node 24 y posteriores.
  */
 
 const WebSocket = require('ws');
 const path = require('path');
+const fs = require('fs');
 
 // ============================================================================
 // CONFIGURACION
 // ============================================================================
 const PORT = 8081;
+const HTTP_PORT = 8082;
 const MATCH_THRESHOLD = 50; // Score minimo para considerar match (0-100)
 
 // ============================================================================
-// INTENTO DE CARGA DEL SDK NATIVO
+// INTENTO DE CARGA DEL SDK NATIVO (con koffi)
 // ============================================================================
-let zkfp = null;
+let koffi = null;
+let zkfpLib = null;
+let zkfp = {};
 let sdkDisponible = false;
 let dbHandle = null;
 let deviceHandle = null;
 
 try {
-  const ffi = require('ffi-napi');
-  const ref = require('ref-napi');
-
-  const int = ref.types.int;
-  const voidPtr = ref.refType(ref.types.void);
-  const bytePtr = ref.refType(ref.types.byte);
-  const intPtr = ref.refType(ref.types.int);
+  koffi = require('koffi');
 
   // Buscar la DLL en varias ubicaciones
   const dllPaths = [
@@ -61,7 +65,7 @@ try {
   let dllPath = null;
   for (const p of dllPaths) {
     try {
-      require('fs').accessSync(p);
+      fs.accessSync(p);
       dllPath = p;
       break;
     } catch (e) {
@@ -70,24 +74,32 @@ try {
   }
 
   if (dllPath) {
-    zkfp = ffi.Library(dllPath, {
-      'ZKFPM_Init': [int, []],
-      'ZKFPM_Terminate': [int, []],
-      'ZKFPM_GetDeviceCount': [int, []],
-      'ZKFPM_OpenDevice': [voidPtr, [int]],
-      'ZKFPM_CloseDevice': [int, [voidPtr]],
-      'ZKFPM_DBInit': [voidPtr, []],
-      'ZKFPM_DBFree': [int, [voidPtr]],
-      'ZKFPM_DBMatch': [int, [voidPtr, bytePtr, int, bytePtr, int]],
-      'ZKFPM_Acquire': [int, [voidPtr, bytePtr, int, bytePtr, intPtr]],
-      'ZKFPM_GetParameters': [int, [voidPtr, int, bytePtr, intPtr]],
-    });
+    zkfpLib = koffi.load(dllPath);
+
+    // Definicion de funciones nativas con koffi
+    // koffi usa cadenas de tipo estilo C ("int", "void *", "uint8_t *", etc.)
+    zkfp.ZKFPM_Init        = zkfpLib.func('int ZKFPM_Init()');
+    zkfp.ZKFPM_Terminate   = zkfpLib.func('int ZKFPM_Terminate()');
+    zkfp.ZKFPM_GetDeviceCount = zkfpLib.func('int ZKFPM_GetDeviceCount()');
+    zkfp.ZKFPM_OpenDevice  = zkfpLib.func('void *ZKFPM_OpenDevice(int index)');
+    zkfp.ZKFPM_CloseDevice = zkfpLib.func('int ZKFPM_CloseDevice(void *handle)');
+    zkfp.ZKFPM_DBInit      = zkfpLib.func('void *ZKFPM_DBInit()');
+    zkfp.ZKFPM_DBFree      = zkfpLib.func('int ZKFPM_DBFree(void *dbHandle)');
+    zkfp.ZKFPM_DBMatch     = zkfpLib.func(
+      'int ZKFPM_DBMatch(void *dbHandle, uint8_t *t1, int len1, uint8_t *t2, int len2)'
+    );
+    zkfp.ZKFPM_Acquire     = zkfpLib.func(
+      'int ZKFPM_Acquire(void *devHandle, uint8_t *imgBuf, int imgLen, uint8_t *tplBuf, _Inout_ int *tplLen)'
+    );
+    zkfp.ZKFPM_GetParameters = zkfpLib.func(
+      'int ZKFPM_GetParameters(void *devHandle, int code, uint8_t *buf, _Inout_ int *bufLen)'
+    );
 
     const initResult = zkfp.ZKFPM_Init();
     if (initResult === 0) {
       sdkDisponible = true;
       dbHandle = zkfp.ZKFPM_DBInit();
-      console.log('[SDK] ZKFinger SDK inicializado correctamente');
+      console.log('[SDK] ZKFinger SDK inicializado correctamente (koffi)');
       console.log(`[SDK] Dispositivos detectados: ${zkfp.ZKFPM_GetDeviceCount()}`);
     } else {
       console.log(`[SDK] Error al inicializar SDK: codigo ${initResult}`);
@@ -127,7 +139,8 @@ function openDevice() {
   if (count <= 0) return false;
 
   deviceHandle = zkfp.ZKFPM_OpenDevice(0);
-  return deviceHandle !== null && !deviceHandle.isNull();
+  // En koffi, los punteros nulos se representan como null
+  return deviceHandle !== null && deviceHandle !== 0;
 }
 
 function captureFingerprint() {
@@ -151,15 +164,15 @@ function captureFingerprint() {
   }
 
   try {
-    const ref = require('ref-napi');
     const templateBuf = Buffer.alloc(2048);
-    const templateLen = ref.alloc(ref.types.int, 2048);
+    // koffi maneja parametros _Inout_ con un array de un elemento
+    const templateLen = [2048];
     const imgBuf = Buffer.alloc(640 * 480);
 
     const result = zkfp.ZKFPM_Acquire(deviceHandle, imgBuf, imgBuf.length, templateBuf, templateLen);
 
     if (result === 0) {
-      const actualLen = templateLen.deref();
+      const actualLen = templateLen[0];
       const template = templateBuf.slice(0, actualLen).toString('base64');
 
       return {
@@ -212,7 +225,6 @@ function matchTemplates(template1Base64, template2Base64) {
 // SERVIDOR HTTP (para que el backend PHP pueda hacer match sin WebSocket)
 // ============================================================================
 const http = require('http');
-const HTTP_PORT = 8082;
 
 const httpServer = http.createServer((req, res) => {
   // CORS para peticiones locales
@@ -265,7 +277,7 @@ httpServer.listen(HTTP_PORT, () => {
 const wss = new WebSocket.Server({ port: PORT });
 
 console.log(`\n[Bridge] ZKFinger Bridge iniciado en ws://localhost:${PORT}`);
-console.log(`[Bridge] Modo: ${sdkDisponible ? 'SDK NATIVO' : 'SIMULACION (desarrollo)'}\n`);
+console.log(`[Bridge] Modo: ${sdkDisponible ? 'SDK NATIVO (koffi)' : 'SIMULACION (desarrollo)'}\n`);
 
 wss.on('connection', (ws) => {
   console.log('[Bridge] Cliente conectado');
